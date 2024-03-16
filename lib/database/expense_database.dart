@@ -22,7 +22,7 @@ class ExpenseDatabase extends ChangeNotifier {
 
   // create
   Future<void> createNewExpense(Expense expense) async {
-    isar.writeTxn(() => isar.expenses.put(expense));
+    await isar.writeTxn(() => isar.expenses.put(expense));
     await readExpense();
   }
 
@@ -51,5 +51,56 @@ class ExpenseDatabase extends ChangeNotifier {
     await isar.writeTxn(() => isar.expenses.delete(id));
 
     await readExpense();
+  }
+
+  // helpers
+
+  // get total expense per month
+  Future<Map<int, double>?> calculateMonthlyTotals() async {
+    // ensure fresh data from db
+    await readExpense();
+
+    // create a map {1: 220, 2:44...}
+    Map<int, double> monthlyTotals = {};
+
+    // fill out the map with months numbers and total expense per month
+    for (var expense in allExpense) {
+      int monthNumber = expense.date.month;
+
+      // all the months that are not in the map initizlize them to 0
+      if (!monthlyTotals.containsKey(monthNumber)) {
+        monthlyTotals[monthNumber] = 0;
+      }
+
+      // add the total and put for the month munber in map
+      monthlyTotals[monthNumber] = monthlyTotals[monthNumber]! + expense.amount;
+
+      return monthlyTotals;
+    }
+  }
+
+  // get the start month
+
+  int getStartMonth() {
+    if (_allExpenses.isEmpty) {
+      return DateTime.now().month;
+    }
+
+    _allExpenses.sort((a, b) => a.date.compareTo(b.date));
+
+    return _allExpenses.first.date.month;
+  }
+  // get the start week
+
+  // get the start of the year
+
+  int getStartYear() {
+    if (_allExpenses.isEmpty) {
+      return DateTime.now().year;
+    }
+
+    _allExpenses.sort((a, b) => a.date.compareTo(b.date));
+
+    return _allExpenses.first.date.year;
   }
 }

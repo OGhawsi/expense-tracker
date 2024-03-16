@@ -1,3 +1,4 @@
+import 'package:expense_tracker/bar%20graph/bar_graph.dart';
 import 'package:expense_tracker/components/my_list_tile.dart';
 import 'package:expense_tracker/database/expense_database.dart';
 import 'package:expense_tracker/helper/helper_functions.dart';
@@ -108,22 +109,27 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Consumer<ExpenseDatabase>(
       builder: (context, value, child) => Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: openExpenseBox,
-          child: const Icon(Icons.add),
-        ),
-        body: ListView.builder(
-            itemCount: value.allExpense.length,
-            itemBuilder: (context, index) {
-              Expense individualExpense = value.allExpense[index];
-              return MyListTile(
-                title: individualExpense.name,
-                trailing: formatAmount(individualExpense.amount),
-                onEdit: (context) => openEditBox(individualExpense),
-                onDelete: (context) => openDeleteBox(individualExpense),
-              );
-            }),
-      ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: openExpenseBox,
+            child: const Icon(Icons.add),
+          ),
+          body: Column(children: [
+            // const MyBarGraph(monthlySummary: [200, 300, 400], startMonth: 1),
+            Expanded(
+              child: ListView.builder(
+                itemCount: value.allExpense.length,
+                itemBuilder: (context, index) {
+                  Expense individualExpense = value.allExpense[index];
+                  return MyListTile(
+                    title: individualExpense.name,
+                    trailing: formatAmount(individualExpense.amount),
+                    onEdit: (context) => openEditBox(individualExpense),
+                    onDelete: (context) => openDeleteBox(individualExpense),
+                  );
+                },
+              ),
+            ),
+          ])),
     );
   }
 
