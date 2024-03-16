@@ -3,6 +3,7 @@ import 'package:expense_tracker/components/my_list_tile.dart';
 import 'package:expense_tracker/database/expense_database.dart';
 import 'package:expense_tracker/helper/helper_functions.dart';
 import 'package:expense_tracker/models/expense.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,9 +18,13 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController nameController = TextEditingController();
   TextEditingController amountController = TextEditingController();
 
+  Future<Map<int, double>>? _monthlyTotalsFuture;
+
   @override
   void initState() {
     Provider.of<ExpenseDatabase>(context, listen: false).readExpense();
+
+    refreshGraphData();
 
     super.initState();
   }
@@ -27,6 +32,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void clearControllers() {
     nameController.clear();
     amountController.clear();
+  }
+
+  void refreshGraphData() {
+    _monthlyTotalsFuture = Provider.of<ExpenseDatabase>(context, listen: false)
+        .calculateMonthlyTotals();
   }
 
   // open dialog box
@@ -108,28 +118,70 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Consumer<ExpenseDatabase>(
-      builder: (context, value, child) => Scaffold(
-          floatingActionButton: FloatingActionButton(
-            onPressed: openExpenseBox,
-            child: const Icon(Icons.add),
-          ),
-          body: Column(children: [
-            // const MyBarGraph(monthlySummary: [200, 300, 400], startMonth: 1),
-            Expanded(
-              child: ListView.builder(
-                itemCount: value.allExpense.length,
-                itemBuilder: (context, index) {
-                  Expense individualExpense = value.allExpense[index];
-                  return MyListTile(
-                    title: individualExpense.name,
-                    trailing: formatAmount(individualExpense.amount),
-                    onEdit: (context) => openEditBox(individualExpense),
-                    onDelete: (context) => openDeleteBox(individualExpense),
-                  );
-                },
-              ),
+      builder: (context, value, child) {
+        int startMonth = value.getStartMonth();
+        int startYear = value.getStartYear();
+        int currentMonth = DateTime.now().month;
+        int currentYear = DateTime.now().year;
+
+        // calculate the number of months since the firest month [ for how man bars]
+
+        int monthCount = calculateMonthCount(
+            startYear, startMonth, currentYear, currentMonth);
+
+        return SafeArea(
+          child: Scaffold(
+            backgroundColor: Colors.grey.shade300,
+            floatingActionButton: FloatingActionButton(
+              onPressed: openExpenseBox,
+              child: const Icon(Icons.add),
             ),
-          ])),
+            body: Column(
+              children: [
+                SizedBox(
+                  height: 250,
+                  child: FutureBuilder(
+                    future: _monthlyTotalsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done) {
+                        final monthlyTotals = snapshot.data ?? {};
+
+                        // create the list
+                        List<double> monthlySummary = List.generate(
+                          monthCount,
+                          (index) => monthlyTotals[startMonth + index] ?? 0.0,
+                        );
+
+                        return MyBarGraph(
+                            monthlySummary: monthlySummary,
+                            startMonth: startMonth);
+                      } else {
+                        return const Center(
+                          child: Text('loading...'),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: value.allExpense.length,
+                    itemBuilder: (context, index) {
+                      Expense individualExpense = value.allExpense[index];
+                      return MyListTile(
+                        title: individualExpense.name,
+                        trailing: formatAmount(individualExpense.amount),
+                        onEdit: (context) => openEditBox(individualExpense),
+                        onDelete: (context) => openDeleteBox(individualExpense),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -157,6 +209,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // ignore: await_only_futures
           Navigator.of(context).pop();
           await context.read<ExpenseDatabase>().createNewExpense(newExpense);
+          refreshGraphData();
           clearControllers();
         } else {
           clearControllers();
@@ -189,6 +242,7 @@ class _MyHomePageState extends State<MyHomePage> {
           await context
               .read<ExpenseDatabase>()
               .updateExpense(existingId, updatedExpense);
+          refreshGraphData();
           clearControllers();
         } else {
           clearControllers();
@@ -206,6 +260,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // ignore: await_only_futures
         await context.read<ExpenseDatabase>().deleteExpense(id);
+        refreshGraphData();
       },
       child: const Text("Delete"),
     );

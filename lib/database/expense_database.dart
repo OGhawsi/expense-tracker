@@ -56,7 +56,7 @@ class ExpenseDatabase extends ChangeNotifier {
   // helpers
 
   // get total expense per month
-  Future<Map<int, double>?> calculateMonthlyTotals() async {
+  Future<Map<int, double>> calculateMonthlyTotals() async {
     // ensure fresh data from db
     await readExpense();
 
@@ -74,9 +74,8 @@ class ExpenseDatabase extends ChangeNotifier {
 
       // add the total and put for the month munber in map
       monthlyTotals[monthNumber] = monthlyTotals[monthNumber]! + expense.amount;
-
-      return monthlyTotals;
     }
+    return monthlyTotals;
   }
 
   // get the start month
