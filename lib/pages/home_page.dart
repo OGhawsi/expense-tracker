@@ -98,7 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('Update expense'),
         actions: [
           _cancelButton(),
-          _deleteButton(expense),
+          _deleteButton(expense.id),
         ],
       ),
     );
@@ -196,30 +196,10 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _deleteButton(int id) {
     return MaterialButton(
       onPressed: () async {
-        if (nameController.text.isNotEmpty ||
-            amountController.text.isNotEmpty) {
-          Navigator.of(context).pop();
-          Expense updatedExpense = Expense(
-            amount: amountController.text.isNotEmpty
-                ? double.parse(amountController.text)
-                : expense.amount,
-            date: DateTime.now(),
-            name: nameController.text.isNotEmpty
-                ? nameController.text
-                : expense.name,
-          );
+        Navigator.of(context).pop();
 
-          int existingId = expense.id;
-
-          // ignore: await_only_futures
-          await context
-              .read<ExpenseDatabase>()
-              .updateExpense(existingId, updatedExpense);
-          clearControllers();
-        } else {
-          clearControllers();
-          Navigator.of(context).pop();
-        }
+        // ignore: await_only_futures
+        await context.read<ExpenseDatabase>().deleteExpense(id);
       },
       child: const Text("Delete"),
     );
