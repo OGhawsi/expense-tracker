@@ -19,12 +19,13 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController amountController = TextEditingController();
 
   Future<Map<int, double>>? _monthlyTotalsFuture;
+  Future<double>? _currentMothTotal;
 
   @override
   void initState() {
     Provider.of<ExpenseDatabase>(context, listen: false).readExpense();
 
-    refreshGraphData();
+    refreshData();
 
     super.initState();
   }
@@ -34,9 +35,12 @@ class _MyHomePageState extends State<MyHomePage> {
     amountController.clear();
   }
 
-  void refreshGraphData() {
+  void refreshData() {
     _monthlyTotalsFuture = Provider.of<ExpenseDatabase>(context, listen: false)
         .calculateMonthlyTotals();
+
+    _currentMothTotal = Provider.of<ExpenseDatabase>(context, listen: false)
+        .currentMonthTotal();
   }
 
   // open dialog box
@@ -129,12 +133,31 @@ class _MyHomePageState extends State<MyHomePage> {
         int monthCount = calculateMonthCount(
             startYear, startMonth, currentYear, currentMonth);
 
+        // Disply current month expenses only
+        List<Expense> currentMonthExpenses = value.allExpense.where((expense) {
+          return expense.date.year == currentYear &&
+              expense.date.month == currentMonth;
+        }).toList();
+
         return SafeArea(
           child: Scaffold(
             backgroundColor: Colors.grey.shade300,
             floatingActionButton: FloatingActionButton(
               onPressed: openExpenseBox,
               child: const Icon(Icons.add),
+            ),
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              title: FutureBuilder<double>(
+                future: _currentMothTotal,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    return Text("\$${snapshot.data!.toStringAsFixed(2)}");
+                  } else {
+                    return const Text("Loading...");
+                  }
+                },
+              ),
             ),
             body: Column(
               children: [
@@ -165,9 +188,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: value.allExpense.length,
+                    itemCount: currentMonthExpenses.length,
                     itemBuilder: (context, index) {
-                      Expense individualExpense = value.allExpense[index];
+                      // reverse the index to get the new first
+
+                      int reversedIndex =
+                          currentMonthExpenses.length - 1 - index;
+                      Expense individualExpense =
+                          currentMonthExpenses[reversedIndex];
                       return MyListTile(
                         title: individualExpense.name,
                         trailing: formatAmount(individualExpense.amount),
@@ -209,7 +237,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // ignore: await_only_futures
           Navigator.of(context).pop();
           await context.read<ExpenseDatabase>().createNewExpense(newExpense);
-          refreshGraphData();
+          refreshData();
           clearControllers();
         } else {
           clearControllers();
@@ -242,7 +270,7 @@ class _MyHomePageState extends State<MyHomePage> {
           await context
               .read<ExpenseDatabase>()
               .updateExpense(existingId, updatedExpense);
-          refreshGraphData();
+          refreshData();
           clearControllers();
         } else {
           clearControllers();
@@ -260,7 +288,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // ignore: await_only_futures
         await context.read<ExpenseDatabase>().deleteExpense(id);
-        refreshGraphData();
+        refreshData();
       },
       child: const Text("Delete"),
     );
